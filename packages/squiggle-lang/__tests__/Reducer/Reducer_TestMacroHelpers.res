@@ -19,11 +19,11 @@ let testMacro_ = (
   let bindings = Bindings.fromArray(bindArray)
   tester(expr->T.toString, () =>
     expr
-    ->Macro.expandMacroCall(
+    ->Reducer_Dispatch_BuiltInMacros.dispatchMacroCall(
       bindings,
       ProjectAccessorsT.identityAccessors,
       Expression.reduceExpressionInProject,
-    )
+    )->Ok
     ->ExpressionWithContext.toStringResult
     ->expect
     ->toEqual(expectedCode)
@@ -44,6 +44,7 @@ let testMacroEval_ = (
       ProjectAccessorsT.identityAccessors,
       Expression.reduceExpressionInProject,
     )
+    ->Ok
     ->InternalExpressionValue.toStringResult
     ->expect
     ->toEqual(expectedValue)
