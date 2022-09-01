@@ -147,10 +147,33 @@ Here we will finally proceed to a real life scenario. */
       test("recursive includes", () => {
         (
           result->InternalExpressionValue.toStringResult,
-          bindings->InternalExpressionValue.IEvBindings->InternalExpressionValue.toString,
+          bindings->Bindings.removeResult->InternalExpressionValue.toStringBindings,
         )->expect == ("Ok(6)", "@{doubleX: 2,x: 1,y: 2,z: 3}")
         /* Everything as expected */
       })
+    })
+  })
+
+  describe("Includes myFile as myVariable", () => {
+    /* Instead of including into global space you can also put a module into a record variable */
+    let project = Project.createProject()
+    Project.setSource(
+      project,
+      "main",
+      `
+    #include "common" as common
+    x=1
+    `,
+    )
+    Project.parseIncludes(project, "main")
+    test("getDependencies", () => {
+      Project.getDependencies(project, "main")->expect == ["common"]
+    })
+    test("getIncludes", () => {
+      switch Project.getIncludes(project, "main") {
+      | Ok(includes) => includes->expect == ["common"]
+      | Error(err) => err->Reducer_ErrorValue.errorToString->fail
+      }
     })
   })
 })

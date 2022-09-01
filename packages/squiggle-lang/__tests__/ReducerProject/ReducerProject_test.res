@@ -14,11 +14,11 @@ let runFetchResult = (project, sourceId) => {
   Project.getResult(project, sourceId)->InternalExpressionValue.toStringResult
 }
 
-let runFetchBindings = (project, sourceId) => {
+let runFetchFlatBindings = (project, sourceId) => {
   Project.run(project, sourceId)
   Project.getBindings(project, sourceId)
-  ->InternalExpressionValue.IEvBindings
-  ->InternalExpressionValue.toString
+  ->Bindings.removeResult
+  ->InternalExpressionValue.toStringBindings
 }
 
 test("setting continuation", () => {
@@ -51,7 +51,7 @@ test("test library", () => {
 test("test bindings", () => {
   let project = Project.createProject()
   Project.setSource(project, "variables", "myVariable=666")
-  runFetchBindings(project, "variables")->expect->toBe("@{myVariable: 666}")
+  runFetchFlatBindings(project, "variables")->expect->toBe("@{myVariable: 666}")
 })
 
 describe("project1", () => {
@@ -59,6 +59,7 @@ describe("project1", () => {
   Project.setSource(project, "first", "x=1")
   Project.setSource(project, "main", "x")
   Project.setContinues(project, "main", ["first"])
+  let internalProject = project->Project.T.Private.castToInternalProject
 
   test("runOrder", () => {
     expect(Project.getRunOrder(project)) == ["first", "main"]
@@ -75,11 +76,19 @@ describe("project1", () => {
   test("dependencies main", () => {
     expect(Project.getDependencies(project, "main")) == ["first"]
   })
+
+  test("past chain first", () => {
+    expect(Project.Private.getPastChain(internalProject, "first")) == []
+  })
+  test("past chain main", () => {
+    expect(Project.Private.getPastChain(internalProject, "main")) == ["first"]
+  })
+
   test("test result", () => {
     runFetchResult(project, "main")->expect->toBe("Ok(1)")
   })
   test("test bindings", () => {
-    runFetchBindings(project, "main")->expect->toBe("@{x: 1}")
+    runFetchFlatBindings(project, "first")->expect->toBe("@{x: 1}")
   })
 })
 
@@ -113,7 +122,7 @@ describe("project2", () => {
     runFetchResult(project, "main")->expect->toBe("Ok(2)")
   })
   test("test bindings", () => {
-    runFetchBindings(project, "main")->expect->toBe("@{x: 1,y: 2}")
+    runFetchFlatBindings(project, "main")->expect->toBe("@{x: 1,y: 2}")
   })
 })
 
@@ -169,6 +178,18 @@ describe("project with include", () => {
     runFetchResult(project, "main")->expect->toBe("Ok(2)")
   })
   test("test bindings", () => {
-    runFetchBindings(project, "main")->expect->toBe("@{common: 0,x: 1,y: 2}")
+    runFetchFlatBindings(project, "main")->expect->toBe("@{common: 0,x: 1,y: 2}")
+  })
+})
+
+describe("project with independent sources", () => {
+  let project = Project.createProject()
+  Project.setSource(project, "first", "1")
+  Project.setSource(project, "second", "2")
+  test("first run order", () => {
+    expect(Project.getRunOrderFor(project, "first")) == ["first"]
+  })
+  test("second run order", () => {
+    expect(Project.getRunOrderFor(project, "second")) == ["second"]
   })
 })
